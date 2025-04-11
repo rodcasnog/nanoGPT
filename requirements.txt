@@ -1,0 +1,15 @@
+numpy
+pandas
+torch
+opencv-python
+matplotlib
+matplotlib-inline
+scikit-learn
+scipy
+PyYAML
+ipython
+jupyter
+black
+isort
+flake8
+mypy
