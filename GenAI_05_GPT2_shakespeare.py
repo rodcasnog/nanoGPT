@@ -27,7 +27,7 @@ LEARNING_RATE = 1e-4    # Optimizer learning rate
 
 # Data & Setup
 DATA_DIR = Path('data')
-INPUT_FILES = ['shakespeare.txt']  # List of input text files
+INPUT_FILES = ['DonQuixote.txt', 'ExemplaryNovels.txt']  # List of input text files
 SEED = 0
 
 # Device Configuration
@@ -363,6 +363,9 @@ if __name__ == "__main__":
 
 
     logging.info("Training finished.")
+    save_path = "language_model.pth"
+    torch.save(model.state_dict(), save_path)
+    logging.info(f"Model state dictionary saved to {save_path}")
 
     # Text Generation
     logging.info("Generating text...")
@@ -373,7 +376,3 @@ if __name__ == "__main__":
     print("\n--- Generated Text ---")
     print(generated_text)
     print("----------------------\n")
-
-    save_path = "language_model.pth"
-    torch.save(model.state_dict(), save_path)
-    logging.info(f"Model state dictionary saved to {save_path}")
