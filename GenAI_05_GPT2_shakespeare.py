@@ -1,32 +1,33 @@
 """
-A simple character-level language model based on the Transformer architecture.
+A simple character-level language model based on the GPT2 architecture.
 Trains on text data and generates new text sequences.
 """
 
+import collections
+import logging
+from pathlib import Path
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-from pathlib import Path
 import sys
-import logging
 
 # Model Hyperparameters
-BATCH_SIZE = 128       # Number of sequences processed in parallel
-BLOCK_SIZE = 64        # Maximum context length for predictions
-N_EMBD = 384           # Embedding dimension
-N_HEADS = 6            # Number of attention heads
-N_LAYERS = 6           # Number of transformer blocks
-DROPOUT = 0.2          # Dropout rate
+BATCH_SIZE = 256        # Number of sequences processed in parallel
+BLOCK_SIZE = 128        # Maximum context length for predictions
+N_EMBD = 128            # Embedding dimension
+N_HEADS = 8             # Number of attention heads
+N_LAYERS = 8            # Number of transformer blocks
+DROPOUT = 0.2           # Dropout rate
 
 # Training Hyperparameters
-MAX_ITERS = 5000       # Total training iterations
-EVAL_INTERVAL = 250    # How often to evaluate model performance
-EVAL_ITERS = 200       # Number of batches to average for evaluation loss
-LEARNING_RATE = 1e-4   # Optimizer learning rate
+MAX_ITERS = 10000       # Total training iterations
+EVAL_INTERVAL = 1000    # How often to evaluate model performance
+EVAL_ITERS = 256        # Number of batches to average for evaluation loss
+LEARNING_RATE = 1e-4    # Optimizer learning rate
 
 # Data & Setup
 DATA_DIR = Path('data')
-INPUT_FILES = ['shakespeare.txt', 'DonQuixote.txt', 'ExemplaryNovels.txt']
+INPUT_FILES = ['shakespeare.txt']  # List of input text files
 SEED = 0
 
 # Device Configuration
@@ -66,20 +67,48 @@ def load_data(data_dir: Path, filenames: list[str]) -> str:
 # Load data
 corpus_text = load_data(DATA_DIR, INPUT_FILES)
 
-# Create vocabulary
-chars = sorted(list(set(corpus_text)))
-VOCAB_SIZE = len(chars)
-logging.info(f"Vocabulary size: {VOCAB_SIZE}")
-print("".join(chars)) # Optional: print the vocabulary
+# Byte Pair Encoding (BPE) for vocabulary reduction
+def byte_pair_encoding(text: str, num_merges: int = 100) -> list[str]:
+    logging.info(f"Vocab size before BPE: {len(set(text))}, text length before BPE: {len(text)}")
+    text = list(text)
+    for i in range(num_merges):
+        pairs = collections.defaultdict(int)
+        for i in range(len(text) - 1):
+            pairs[(text[i], text[i+1])] += 1
+        if not pairs:
+            logging.info("No more pairs to merge.")
+            break
+        max_pair = max(pairs, key=pairs.get)
+        
+        i = j = 0
+        new_token = ''.join(max_pair)
+        while i < len(text):
+            if i + 1 < len(text) and (text[i], text[i+1]) == max_pair:
+                text[j] = new_token
+                i += 2
+            else:
+                text[j] = text[i]
+                i += 1
+            j += 1
+        text = text[:j]
+        if i % 100 == 0:
+            logging.info(f"New vocab size: {len(set(text))}, new text length: {len(text)}")
+    
+    return text
 
-# Character mapping
-char_to_idx = {ch: i for i, ch in enumerate(chars)}
-idx_to_char = {i: ch for i, ch in enumerate(chars)}
-encode = lambda s: [char_to_idx[c] for c in s]  # encoder: take a string, output a list of integers
-decode = lambda l: ''.join([idx_to_char[i] for i in l]) # decoder: take a list of integers, output a string
+BPE_text = byte_pair_encoding(corpus_text)
+vocab = sorted(set(BPE_text))
+VOCAB_SIZE = len(vocab)
+logging.info(f"Vocabulary size after BPE: {VOCAB_SIZE}")
+
+# Token mapping
+token_to_idx = {ch: i for i, ch in enumerate(vocab)}
+idx_to_token = {i: ch for i, ch in enumerate(vocab)}
+encode = lambda s: [token_to_idx[c] for c in s]
+decode = lambda l: ''.join([idx_to_token[i] for i in l])
 
 # Split data into train and validation
-data = torch.tensor(encode(corpus_text), dtype=torch.long)
+data = torch.tensor(encode(BPE_text), dtype=torch.long)
 n = int(0.9 * len(data))
 train_data = data[:n]
 val_data = data[n:]
@@ -337,7 +366,7 @@ if __name__ == "__main__":
 
     # Text Generation
     logging.info("Generating text...")
-    start_context = torch.tensor([[char_to_idx['\n']]], dtype=torch.long, device=DEVICE) # Shape (1, 1)
+    start_context = torch.tensor([[token_to_idx['\n']]], dtype=torch.long, device=DEVICE) # Shape (1, 1)
     generated_indices = model.generate(start_context, max_new_tokens=5000)
     generated_text = decode(generated_indices[0].tolist())
 
@@ -345,6 +374,6 @@ if __name__ == "__main__":
     print(generated_text)
     print("----------------------\n")
 
-    # save_path = "language_model.pth"
-    # torch.save(model.state_dict(), save_path)
-    # logging.info(f"Model state dictionary saved to {save_path}")
+    save_path = "language_model.pth"
+    torch.save(model.state_dict(), save_path)
+    logging.info(f"Model state dictionary saved to {save_path}")
