@@ -25,11 +25,6 @@ EVAL_INTERVAL = 1000    # How often to evaluate model performance
 EVAL_ITERS = 256        # Number of batches to average for evaluation loss
 LEARNING_RATE = 1e-4    # Optimizer learning rate
 
-# Data & Setup
-DATA_DIR = Path('data')
-INPUT_FILES = ['DonQuixote.txt', 'ExemplaryNovels.txt']  # List of input text files
-SEED = 0
-
 # Device Configuration
 if torch.cuda.is_available():
     DEVICE = 'cuda'
@@ -39,8 +34,17 @@ else:
     DEVICE = 'cpu'
 print(f"Using device: {DEVICE}")
 
+# Data & Setup
+DATA_DIR = Path('data')
+SEED = 0
+if len(sys.argv) > 1:
+    INPUT_FILES = list(sys.argv[1:])
+else:
+    INPUT_FILES = ['DonQuixote.txt', 'ExemplaryNovels.txt', 'shakespeare.txt']
+
 torch.manual_seed(SEED)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.info(f"Using input files: {INPUT_FILES}")
 
 # Data Loading and Preparation
 def load_data(data_dir: Path, filenames: list[str]) -> str:
@@ -69,6 +73,16 @@ corpus_text = load_data(DATA_DIR, INPUT_FILES)
 
 # Byte Pair Encoding (BPE) for vocabulary reduction
 def byte_pair_encoding(text: str, num_merges: int = 100) -> list[str]:
+    """
+    Perform Byte Pair Encoding on the input text to reduce vocabulary size.
+
+    Args:
+        text (str): Input text to be processed.
+        num_merges (int): Number of merge operations to perform.
+
+    Returns:
+        list[str]: List of tokens after applying BPE.
+    """
     logging.info(f"Vocab size before BPE: {len(set(text))}, text length before BPE: {len(text)}")
     text = list(text)
     for i in range(num_merges):
