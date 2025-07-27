@@ -173,10 +173,11 @@ class Head(nn.Module):
         k = self.key(x)   # (B, T, head_size)
         q = self.query(x) # (B, T, head_size)
         v = self.value(x) # (B, T, head_size)
+        head_size = q.shape[-1]
 
         # Compute attention
         # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
-        wei = q @ k.transpose(-2, -1) * C**-0.5
+        wei = q @ k.transpose(-2, -1) * head_size**-0.5
         # Mask out future positions
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
         wei = F.softmax(wei, dim=-1) # (B, T, T)
