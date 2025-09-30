@@ -2,7 +2,7 @@ A collection of scripts and notebooks exploring the training dynamics of differe
 
 To use it type:
 ```
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 followed by
 ```
